@@ -15,6 +15,7 @@ import input;
 import rom;
 
 namespace chippit {
+/// @brief Main emulation class
 export class Emulation {
 public:
     Emulation() : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{graphics_, input_} {

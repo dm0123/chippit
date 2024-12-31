@@ -5,3 +5,4 @@ This is a playground for emulation studying
 - Complete the skeleton
 - Write cycle interpretation for the CPU thread
 - Re-evaulate architcture
+- Rewrite rendering, so it will be based on rectangles and scaled properly
