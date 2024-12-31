@@ -5,6 +5,11 @@ module;
 export module core;
 
 namespace chippit {
+namespace constants {
+export constexpr size_t display_width = 64u;
+export constexpr size_t display_height = 32u;
+} // namespace constants
+
 export struct Chip8 {
     struct Registers {
         std::uint8_t V0;
@@ -36,7 +41,7 @@ export struct Chip8 {
 
     // TODO: may be separate classes, but there isn't much code
     std::byte memory_[4096];
-    std::byte graphics_[64 * 32];
+    std::byte graphics_[constants::display_width * constants::display_height];
 
     std::uint8_t delay_timer_;
     std::uint8_t sound_timer_;
