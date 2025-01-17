@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 find_package(SDL2 REQUIRED)
 
-add_executable(chippit src/main.cpp src/application.cpp)
+add_executable(chippit src/main.cpp src/application.cpp src/emulation.cpp)
 target_sources(chippit PUBLIC FILE_SET CXX_MODULES 
     FILES
         src/core.cppm

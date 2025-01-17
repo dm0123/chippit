@@ -1,10 +1,14 @@
 module;
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <chrono>
 #include <future>
 #include <print>
+#include <cstdint>
 
 export module emulation;
 
@@ -17,27 +21,25 @@ import rom;
 namespace chippit {
 /// @brief Main emulation class
 export class Emulation {
+    static constexpr auto frequency = std::chrono::seconds{1} / 60;
 public:
-    Emulation() : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{graphics_, input_} {
-        std::print("Emulation::Emulation()\n");
-    }
+    Emulation();
 
-    void run() {
-        std::print("Emulation::run()");
-        graphics_.init();
-        input_.init();
-        rom_.init();
+    void run();
+    void reset();
 
-        cpuThreadFuture_ = std::async(std::launch::async, std::bind(&Emulation::cpu_thread, this));
-        app_.run();
-        cpuThreadFuture_.wait();
-    }
+    void cpu_thread();
 
-    void cpu_thread() {
-        while(!finished_.load()) {
-            // TODO: update cpu
-        }
-    }
+    void cpu_tick();
+
+    void opcode0X();
+    void opcode1X();
+    void opcode2X();
+    void opcode3X();
+    void opcode4X();
+    void opcode5X();
+    void opcode6X();
+    void opcode7X();
 private:
     std::unique_ptr<Chip8> cpu_; // TODO: maybe some factory for this
     Graphics graphics_;
@@ -47,8 +49,15 @@ private:
     
 
     std::future<void> cpuThreadFuture_;
-    std::chrono::time_point<std::chrono::steady_clock> now_{};
+    std::chrono::time_point<std::chrono::steady_clock> now_{std::chrono::steady_clock::now()};
 
     std::atomic_bool finished_{false};
+
+    std::array<std::function<void()>, 16> opcodeTable_;
+    std::mutex cpuMutex_;
+
+    void fetch();
+    void decodeAndExecute();
+    void updateTimers();
 };
 } // namespace chippit
