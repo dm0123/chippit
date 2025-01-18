@@ -9,6 +9,7 @@ module;
 #include <future>
 #include <print>
 #include <cstdint>
+#include <string_view>
 
 export module emulation;
 
@@ -26,6 +27,7 @@ public:
     Emulation();
 
     void run();
+    void reset(std::string_view romPath);
     void reset();
 
     void cpu_thread();

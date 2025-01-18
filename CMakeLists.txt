@@ -10,7 +10,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 find_package(SDL2 REQUIRED)
 
+include(FetchContent)
+
+FetchContent_Declare(cmdlime
+    GIT_REPOSITORY "https://github.com/kamchatka-volcano/cmdlime.git"
+    GIT_TAG "origin/master"
+)
+
+FetchContent_MakeAvailable(cmdlime)
+
 add_executable(chippit src/main.cpp src/application.cpp src/emulation.cpp)
+target_include_directories(chippit PRIVATE ${CMAKE_SOURCE_DIR}/3rdparty/cmdlime/include)
 target_sources(chippit PUBLIC FILE_SET CXX_MODULES 
     FILES
         src/core.cppm
@@ -21,4 +31,4 @@ target_sources(chippit PUBLIC FILE_SET CXX_MODULES
         src/application.cppm
 )
 
-target_link_libraries(chippit PUBLIC SDL2::SDL2)
+target_link_libraries(chippit PUBLIC SDL2::SDL2 cmdlime::cmdlime)
