@@ -5,6 +5,7 @@ module;
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <chrono>
 #include <future>
 #include <print>
@@ -42,6 +43,14 @@ public:
     void opcode5X();
     void opcode6X();
     void opcode7X();
+    void opcode8X();
+    void opcode9X();
+    void opcodeAX();
+    void opcodeBX();
+    void opcodeCX();
+    void opcodeDX();
+    void opcodeEX();
+    void opcodeFX();
 private:
     std::unique_ptr<Chip8> cpu_; // TODO: maybe some factory for this
     Graphics graphics_;
@@ -57,6 +66,7 @@ private:
 
     std::array<std::function<void()>, 16> opcodeTable_;
     std::mutex cpuMutex_;
+    std::random_device rd_;
 
     void fetch();
     void decodeAndExecute();

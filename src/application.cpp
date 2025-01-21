@@ -23,7 +23,7 @@ void Application::run() {
     }
     SDL_CreateWindowAndRenderer(640, 480, SDL_WINDOW_SHOWN, &window_, &renderer_);
     if(!window_) {
-        std::cerr << "Failed to create SDL window: " << SDL_GetError(); // TODO: logger
+        std::cerr << "Failed to create SDL window: " << SDL_GetError() << "\n"; // TODO: logger
         return;
     }
     SDL_SetWindowTitle(window_, "CHIP8");
