@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstddef>
+#include <variant>
 
 export module core;
 
@@ -11,28 +12,7 @@ export constexpr size_t display_height = 32u;
 } // namespace constants
 
 export struct Chip8 {
-    struct Registers {
-        std::uint8_t V0;
-        std::uint8_t V1;
-        std::uint8_t V2;
-        std::uint8_t V3;
-        std::uint8_t V4;
-        std::uint8_t V5;
-        std::uint8_t V6;
-        std::uint8_t V7;
-        std::uint8_t V8;
-        std::uint8_t V9;
-        std::uint8_t VA;
-        std::uint8_t VB;
-        std::uint8_t VC;
-        std::uint8_t VD;
-        std::uint8_t VE;
-        std::uint8_t VF;
-        
-    };
-
-    Registers registers;
-
+    std::uint8_t V[16];
     std::uint16_t opcode;
     std::uint16_t I;
     std::uint16_t pc_;
@@ -40,7 +20,7 @@ export struct Chip8 {
     std::uint8_t sp_;
 
     // TODO: may be separate classes, but there isn't much code
-    std::byte memory_[4096];
+    std::byte memory_[4096]; // TODO: std::byte always seems to need convertation...
     std::byte graphics_[constants::display_width * constants::display_height];
 
     std::uint8_t delay_timer_;
@@ -48,5 +28,24 @@ export struct Chip8 {
 
     // input
     std::uint8_t key_[16];
+
+    static constexpr std::byte fontset_[80] = {
+        std::byte{0xF0}, std::byte{0x90}, std::byte{0x90}, std::byte{0x90}, std::byte{0xF0}, // 0
+        std::byte{0x20}, std::byte{0x60}, std::byte{0x20}, std::byte{0x20}, std::byte{0x70}, // 1
+        std::byte{0xF0}, std::byte{0x10}, std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, // 2
+        std::byte{0xF0}, std::byte{0x10}, std::byte{0xF0}, std::byte{0x10}, std::byte{0xF0}, // 3
+        std::byte{0x90}, std::byte{0x90}, std::byte{0xF0}, std::byte{0x10}, std::byte{0x10}, // 4
+        std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, std::byte{0x10}, std::byte{0xF0}, // 5
+        std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, std::byte{0x90}, std::byte{0xF0}, // 6
+        std::byte{0xF0}, std::byte{0x10}, std::byte{0x20}, std::byte{0x40}, std::byte{0x40}, // 7
+        std::byte{0xF0}, std::byte{0x90}, std::byte{0xF0}, std::byte{0x90}, std::byte{0xF0}, // 8
+        std::byte{0xF0}, std::byte{0x90}, std::byte{0xF0}, std::byte{0x10}, std::byte{0xF0}, // 9
+        std::byte{0xF0}, std::byte{0x90}, std::byte{0xF0}, std::byte{0x90}, std::byte{0x90}, // A
+        std::byte{0xE0}, std::byte{0x90}, std::byte{0xE0}, std::byte{0x90}, std::byte{0xE0}, // B
+        std::byte{0xF0}, std::byte{0x80}, std::byte{0x80}, std::byte{0x80}, std::byte{0xF0}, // C
+        std::byte{0xE0}, std::byte{0x90}, std::byte{0x90}, std::byte{0x90}, std::byte{0xE0}, // D
+        std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, // E
+        std::byte{0xF0}, std::byte{0x80}, std::byte{0xF0}, std::byte{0x80}, std::byte{0x80}  // F
+    };
 };
 } // namespace chippit
