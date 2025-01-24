@@ -30,6 +30,7 @@ public:
     void run();
     void reset(std::string_view romPath);
     void reset();
+    void stop();
 
     void cpu_thread();
 

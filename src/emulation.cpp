@@ -12,7 +12,7 @@ module emulation;
 
 namespace chippit {
 Emulation::Emulation() 
-    : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{graphics_, input_}, rom_{cpu_.get()} {
+    : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{*this, graphics_, input_}, rom_{cpu_.get()} {
     std::print("Emulation::Emulation()\n");
     opcodeTable_ = {
         std::bind(&Emulation::opcode0X, this),
@@ -32,15 +32,22 @@ Emulation::Emulation()
         std::bind(&Emulation::opcodeEX, this),
         std::bind(&Emulation::opcodeFX, this)
     };
+
+    for(auto i = 0u; i < 80u; ++i) {
+        cpu_->memory_[i] = Chip8::fontset_[i];
+    }
 }
 
 void Emulation::run() {
     std::print("Emulation::run()\n");
-    graphics_.init();
     input_.init();
 
     cpuThreadFuture_ = std::async(std::launch::async, std::bind(&Emulation::cpu_thread, this));
     app_.run();
+}
+
+void Emulation::stop() {
+    finished_.store(true);
     cpuThreadFuture_.wait();
 }
 
@@ -294,7 +301,24 @@ void Emulation::opcodeDX() {
     // Each row of 8 pixels is read as bit-coded starting from memory location I;
     // I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped
     // from set to unset when the sprite is drawn, and to 0 if that does not happen.
-    std::print("Drawing not implemented yet...\n");
+    auto x = (cpu_->opcode >> 8) & 0x000F;
+    auto y = (cpu_->opcode >> 4) & 0x000F;
+    auto n = cpu_->opcode & 0x000F;
+    std::uint8_t pixel = 0u;
+
+    for(auto line_y = 0u; line_y < n; ++line_y) {
+        pixel = std::to_integer<std::uint8_t>(cpu_->memory_[cpu_->I + line_y]);
+        for(auto line_x = 0u; line_x < 8u; ++line_x) {
+            if((pixel & (0x80 >> line_x)) != 0u) {
+                auto mem_location = x + line_x + ((y + line_y) * 64u);
+                if(cpu_->graphics_[mem_location] == std::byte{0x1}) {
+                    cpu_->V[0xF] = 1u;
+                }
+
+                cpu_->graphics_[mem_location] ^= std::byte{0x1};
+            }
+        }
+    }
     cpu_->pc_ += 2u;
 }
 
@@ -360,7 +384,7 @@ void Emulation::opcodeFX() {
         case 0x29:
         {
             // set I to the 5 line high hex sprite for the lowest nibble in vX
-            std::print("Drawing not implemented yet...\n");
+            cpu_->I = cpu_->V[x] * 5;
             break;
         }
         case 0x33:

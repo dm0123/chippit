@@ -19,14 +19,11 @@ public:
     Graphics(Chip8* cpu) : cpu_{cpu} {
     }
 
-    ~Graphics() {
-        deinit();
-    }
-
     bool update(SDL_Window* window, SDL_Renderer* renderer) {
         // This method is called from the main thread
         if(!window || !renderer || !cpu_) {
             // TODO: logger
+            std::print("FATAL ERROR: no window or renderer or cpu\n");
             return false;
         }
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
@@ -41,23 +38,13 @@ public:
                 }
 
                 auto color = (cpu_->graphics_[i] > std::byte{0}) ? 255 : 0;
-                SDL_SetRenderDrawColor(renderer, color, color, color, 255); // TODO: maybe some Color class, but it's black-white...
+                SDL_SetRenderDrawColor(renderer, color, color, color, 255);
                 SDL_RenderDrawPoint(renderer, screen_x, screen_y); // TODO: upscaling goes there
         }
         SDL_RenderPresent(renderer);
 
         return true;
     }
-
-    bool init() {
-    
-        return true;
-    }
-
-    void deinit() {
-        
-    }
-
 private:
     Chip8* cpu_{nullptr};
 };
