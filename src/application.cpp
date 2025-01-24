@@ -9,10 +9,11 @@ module;
 #include <functional>
 
 module application;
+import emulation;
 
 namespace chippit {
-Application::Application(Graphics& graphics, Input& input) 
-    : graphics_{graphics}, input_{input} {
+Application::Application(Emulation& emu, Graphics& graphics, Input& input) 
+    : emu_{emu}, graphics_{graphics}, input_{input} {
 
 }
 
@@ -38,6 +39,8 @@ void Application::run() {
             }
         }
     }
+
+    emu_.stop();
 
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);

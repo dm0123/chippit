@@ -27,6 +27,7 @@ public:
 
         // TODO: this is a bit blunt and handles errors poorly
         rom.read(reinterpret_cast<char*>(&cpu_->memory_[0x200]), max_rom_size);
+        std::print("Successfully loaded {}\n", romPath);
         return true;
     }
 private:
