@@ -11,8 +11,9 @@ module;
 module emulation;
 
 namespace chippit {
-Emulation::Emulation() 
-    : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{*this, graphics_, input_}, rom_{cpu_.get()} {
+Emulation::Emulation(bool cpuDump, bool memoryDump, bool graphicsDump)
+    : cpu_{std::make_unique<Chip8>()}, graphics_{cpu_.get()}, app_{*this, graphics_, input_}, rom_{cpu_.get()},
+       cpuDump_{cpuDump}, memoryDump_{memoryDump}, graphicsDump_{graphicsDump} {
     std::print("Emulation::Emulation()\n");
     opcodeTable_ = {
         std::bind(&Emulation::opcode0X, this),
@@ -80,8 +81,51 @@ void Emulation::cpu_tick() {
     updateTimers();
 }
 
+void Emulation::dump() {
+    if(cpuDump_) {
+        std::print("CPU State: \n");
+        std::print("I: {} ", cpu_->I);
+        for(int i = 0; i < 16; ++i) {
+            std::print("V[{}]: {} ", i, cpu_->V[i]);
+        }
+
+        std::print("\npc: {}, sp: {}", cpu_->pc_, cpu_->sp_);
+        std::print("\n ===== stack dump =====");
+        for(auto byte = 0u; byte < 16; ++byte){
+            std::print("{:#06x} ", cpu_->stack_[byte]);
+        }
+        std::print("\n\n");
+    }
+
+    auto i = 0;
+    if(memoryDump_) {
+        for(int row = 0; row < 256; ++row) {
+            for(int column = 0; column < 16; ++column) {
+                std::print("{:#06x} ", cpu_->memory_[i]);
+                ++i;
+            }
+            std::print("\n");
+        }
+
+        std::print("\n\n");
+    }
+
+    i = 0;
+
+    if(graphicsDump_) {
+        for(int row = 0; row < 32; ++row) {
+            for(int column = 0; column < 64; ++column) {
+                std::print("{}", (cpu_->graphics_[i] == 0 ? "." : "*"));
+                ++i;
+            }
+            std::print("\n");
+        }
+        std::print("\n\n");
+    }
+}
+
 void Emulation::fetch() {
-    cpu_->opcode = std::to_integer<uint16_t>(cpu_->memory_[cpu_->pc_]) << 8 | std::to_integer<uint16_t>(cpu_->memory_[cpu_->pc_ + 1]); // Big-endian
+    cpu_->opcode = cpu_->memory_[cpu_->pc_] << 8 | cpu_->memory_[cpu_->pc_ + 1]; // Big-endian
 }
 
 void Emulation::decodeAndExecute() {
@@ -92,7 +136,11 @@ void Emulation::decodeAndExecute() {
         return;
     }
     auto& func = opcodeTable_.at(high);
+    if(cpuDump_ || memoryDump_ || graphicsDump_) {
+        std::print("Executing  opcode {:#06x}\n", cpu_->opcode);
+    }
     func();
+    dump();
 }
 
 void Emulation::updateTimers() {
@@ -113,7 +161,7 @@ void Emulation::opcode0X() {
         case 0x00E0:
         {
             // clear screen
-            std::fill(std::begin(cpu_->graphics_), std::end(cpu_->graphics_), std::byte{0});
+            std::fill(std::begin(cpu_->graphics_), std::end(cpu_->graphics_), 0u);
             cpu_->pc_ += 2u;
             break;
         }
@@ -301,21 +349,22 @@ void Emulation::opcodeDX() {
     // Each row of 8 pixels is read as bit-coded starting from memory location I;
     // I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped
     // from set to unset when the sprite is drawn, and to 0 if that does not happen.
-    auto x = (cpu_->opcode >> 8) & 0x000F;
-    auto y = (cpu_->opcode >> 4) & 0x000F;
+    auto x = cpu_->V[(cpu_->opcode >> 8) & 0x000F];
+    auto y = cpu_->V[(cpu_->opcode >> 4) & 0x000F];
     auto n = cpu_->opcode & 0x000F;
     std::uint8_t pixel = 0u;
 
+    cpu_->V[0xF] = 0u;
     for(auto line_y = 0u; line_y < n; ++line_y) {
-        pixel = std::to_integer<std::uint8_t>(cpu_->memory_[cpu_->I + line_y]);
+        pixel = cpu_->memory_[cpu_->I + line_y];
         for(auto line_x = 0u; line_x < 8u; ++line_x) {
             if((pixel & (0x80 >> line_x)) != 0u) {
                 auto mem_location = x + line_x + ((y + line_y) * 64u);
-                if(cpu_->graphics_[mem_location] == std::byte{0x1}) {
+                if(cpu_->graphics_[mem_location] == 1) {
                     cpu_->V[0xF] = 1u;
                 }
 
-                cpu_->graphics_[mem_location] ^= std::byte{0x1};
+                cpu_->graphics_[mem_location] ^= 1;
             }
         }
     }
@@ -324,7 +373,7 @@ void Emulation::opcodeDX() {
 
 void Emulation::opcodeEX() {
     auto x = (cpu_->opcode >> 8) & 0x000F;
-    auto nn =cpu_->opcode & 0x00FF;
+    auto nn = cpu_->opcode & 0x00FF;
     switch(nn) {
         case 0x9E:
         {
@@ -390,16 +439,16 @@ void Emulation::opcodeFX() {
         case 0x33:
         {
             // write the value of vX as BCD value at the addresses I, I+1 and I+2
-            cpu_->memory_[cpu_->I] = std::byte{static_cast<uint8_t>((cpu_->V[x] % 1000) / 100)};
-            cpu_->memory_[cpu_->I + 1] = std::byte{static_cast<uint8_t>((cpu_->V[x] % 100) / 10)};
-            cpu_->memory_[cpu_->I + 2] = std::byte{static_cast<uint8_t>(cpu_->V[x] % 10)};
+            cpu_->memory_[cpu_->I] = (cpu_->V[x] % 1000) / 100;
+            cpu_->memory_[cpu_->I + 1] = static_cast<uint8_t>((cpu_->V[x] % 100) / 10);
+            cpu_->memory_[cpu_->I + 2] = static_cast<uint8_t>(cpu_->V[x] % 10);
             break;
         }
         case 0x55:
         {
             // write the content of v0 to vX at the memory pointed to by I, I is incremented by X+1
             for(auto i = 0; i < 15; ++i) {
-                cpu_->memory_[cpu_->I + i] = std::byte{cpu_->V[i]};
+                cpu_->memory_[cpu_->I + i] = cpu_->V[i];
             }
             break;
         }
@@ -407,7 +456,7 @@ void Emulation::opcodeFX() {
         {
             // read the bytes from memory pointed to by I into the registers v0 to vX, I is incremented by X+1
             for(auto i = 0; i < 15; ++i) {
-                cpu_->V[i] = std::to_integer<std::uint8_t>(cpu_->memory_[cpu_->I + i]);
+                cpu_->V[i] = cpu_->memory_[cpu_->I + i];
             }
             break;
         }

@@ -9,6 +9,9 @@ import emulation;
 namespace args {
 struct Cfg : public cmdlime::Config {
     CMDLIME_ARG(romPath, std::string) << "Path to a CHIP-8 ROM binary";
+    CMDLIME_FLAG(cpuDump) << "Dump CPU state";
+    CMDLIME_FLAG(memoryDump) << "Dump memory";
+    CMDLIME_FLAG(graphicsDump) << "Dump graphics";
     CMDLIME_EXITFLAG(help);
 };
 } // namespace
@@ -29,7 +32,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    chippit::Emulation emu{};
+    chippit::Emulation emu{cfg.cpuDump, cfg.memoryDump, cfg.graphicsDump};
     emu.reset(cfg.romPath);
     emu.run();
     return 0;

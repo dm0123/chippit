@@ -27,20 +27,22 @@ void Application::run() {
         std::cerr << "Failed to create SDL window: " << SDL_GetError() << "\n"; // TODO: logger
         return;
     }
-    SDL_SetWindowTitle(window_, "CHIP8");
-    while(!finished_.load()) {
-        graphics_.update(window_, renderer_);
-        SDL_UpdateWindowSurface(window_);
 
+    SDL_SetWindowTitle(window_, "CHIP8");
+    graphics_.init(window_, renderer_);
+    while(!finished_.load()) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 finished_.store(true);
             }
         }
+        graphics_.update();
     }
 
     emu_.stop();
+
+    graphics_.deinit();
 
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);

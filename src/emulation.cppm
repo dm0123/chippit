@@ -25,7 +25,7 @@ namespace chippit {
 export class Emulation {
     static constexpr auto frequency = std::chrono::seconds{1} / 60;
 public:
-    Emulation();
+    Emulation(bool cpuDump, bool memoryDump, bool graphicsDump);
 
     void run();
     void reset(std::string_view romPath);
@@ -69,8 +69,14 @@ private:
     std::mutex cpuMutex_;
     std::random_device rd_;
 
+    bool cpuDump_{false};
+    bool memoryDump_{false};
+    bool graphicsDump_{false};
+
     void fetch();
     void decodeAndExecute();
     void updateTimers();
+
+    void dump();
 };
 } // namespace chippit

@@ -3,6 +3,7 @@ module;
 #include <SDL2/SDL_timer.h>
 
 #include <cstddef>
+#include <cstring>
 #include <iostream>
 #include <format>
 #include <future>
@@ -19,33 +20,52 @@ public:
     Graphics(Chip8* cpu) : cpu_{cpu} {
     }
 
-    bool update(SDL_Window* window, SDL_Renderer* renderer) {
-        // This method is called from the main thread
-        if(!window || !renderer || !cpu_) {
-            // TODO: logger
-            std::print("FATAL ERROR: no window or renderer or cpu\n");
+    void init(SDL_Window* window, SDL_Renderer* renderer) {
+        window_ = window;
+        renderer_ = renderer;
+    }
+
+    void deinit() {
+    }
+
+    bool update() {
+        if(!window_ || !renderer_) {
+            std::print("FATAL: no window\n");
             return false;
         }
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-        SDL_RenderClear(renderer);
-        auto screen_x = 0u;
-        auto screen_y = 0u;
-        for(auto i = 0u; i < constants::display_width * constants::display_height; ++i) {
-                screen_x++;
-                if(screen_x == constants::display_width) {
-                    screen_x = 0;
-                    screen_y++;
-                }
 
-                auto color = (cpu_->graphics_[i] > std::byte{0}) ? 255 : 0;
-                SDL_SetRenderDrawColor(renderer, color, color, color, 255);
-                SDL_RenderDrawPoint(renderer, screen_x, screen_y); // TODO: upscaling goes there
+        auto rec_w = 0;
+        auto rec_h = 0;
+
+        SDL_GetWindowSize(window_, &rec_w, &rec_h);
+        rec_w /= constants::display_width;
+        rec_h /= constants::display_height;
+        SDL_RenderClear(renderer_);
+
+        for(int row = 0; row < constants::display_width; ++row) {
+            for(int column = 0; column < constants::display_height; ++column) {
+                auto graphics_pos = row + column * constants::display_width;
+                auto color = cpu_->graphics_[graphics_pos] == 1u ? 255u : 0u;
+                SDL_Rect rect;
+                rect.x = row * rec_w;
+                rect.y = column * rec_h;
+                rect.w = rec_w;
+                rect.h = rec_h;
+                SDL_SetRenderDrawColor(renderer_, color, color, color, 255);
+                SDL_RenderFillRect(renderer_, &rect);
+                SDL_RenderDrawRect(renderer_, &rect);
+
+                SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+            }
         }
-        SDL_RenderPresent(renderer);
+
+        SDL_RenderPresent(renderer_);
 
         return true;
     }
 private:
     Chip8* cpu_{nullptr};
+    SDL_Window* window_{nullptr};
+    SDL_Renderer* renderer_{nullptr};
 };
 } // namespace chippit
