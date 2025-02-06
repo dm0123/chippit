@@ -33,7 +33,13 @@ void Application::run() {
     while(!finished_.load()) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
+            if(e.type == SDL_KEYDOWN) {
+                input_.setPressed(e.key.keysym.sym, true);
+            }
+            else if(e.type == SDL_KEYUP) {
+                input_.setPressed(e.key.keysym.sym, false);
+            }
+            else if (e.type == SDL_QUIT) {
                 finished_.store(true);
             }
         }

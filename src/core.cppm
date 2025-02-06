@@ -16,8 +16,8 @@ export struct Chip8 {
     std::uint16_t opcode;
     std::uint16_t I;
     std::uint16_t pc_;
-    std::uint8_t stack_[16];
-    std::uint8_t sp_;
+    std::uint16_t stack_[16];
+    std::uint16_t sp_;
 
     // TODO: may be separate classes, but there isn't much code
     std::uint8_t memory_[4096];

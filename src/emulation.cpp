@@ -41,7 +41,6 @@ Emulation::Emulation(bool cpuDump, bool memoryDump, bool graphicsDump)
 
 void Emulation::run() {
     std::print("Emulation::run()\n");
-    input_.init();
 
     cpuThreadFuture_ = std::async(std::launch::async, std::bind(&Emulation::cpu_thread, this));
     app_.run();
@@ -66,10 +65,8 @@ void Emulation::reset(std::string_view romPath) {
 
 void Emulation::cpu_thread() {
     while(!finished_.load()) {
-        auto now = std::chrono::steady_clock::now();
-        if (now - now_ > frequency) {
-            cpu_tick();
-        }
+        cpu_tick();
+        std::this_thread::sleep_for(frequency);
     }
     reset();
 }
@@ -168,10 +165,9 @@ void Emulation::opcode0X() {
         case 0x00EE:
         {
             // return to address pulled from stack
+            --cpu_->sp_;
             cpu_->pc_ = cpu_->stack_[cpu_->sp_];
-            if(cpu_->sp_ != 0u) {
-                cpu_->sp_--;
-            }
+            cpu_->pc_ += 2u;
             break;
         }
         default:
@@ -192,7 +188,7 @@ void Emulation::opcode1X() {
 void Emulation::opcode2X() {
     // 0x2nnn: push current address to stack and jump to nnn
     cpu_->stack_[cpu_->sp_] = cpu_->pc_;
-    cpu_->sp_++;
+    ++cpu_->sp_;
     cpu_->pc_ = cpu_->opcode & 0x0FFF;
 }
 
@@ -207,14 +203,14 @@ void Emulation::opcode4X() {
     // 0x4xnn: skip the next opcode if Vx != n
     auto x = (cpu_->opcode >> 8) & 0x000F;
     auto value = cpu_->opcode & 0x00FF;
-    cpu_->pc_ += (cpu_->V[x] == value ? 2u : 4u);
+    cpu_->pc_ += (cpu_->V[x] != value ? 4u : 2u);
 }
 
 void Emulation::opcode5X() {
     // 0x5xy0: skip next opcode if vX == vY
     auto x = (cpu_->opcode >> 8) & 0x000F;
     auto y = (cpu_->opcode >> 4) & 0x000F;
-    cpu_->pc_ += (cpu_->V[x] == cpu_->V[y] ? 2u : 4u);
+    cpu_->pc_ += (cpu_->V[x] == cpu_->V[y] ? 4u : 2u);
 }
 
 void Emulation::opcode6X() {
@@ -276,7 +272,7 @@ void Emulation::opcode8X() {
         case 5u:
         {
             // 0x8xy5: subtract vY from vX, vF is set to 0 if an underflow happened, to 1 if not, even if X=F!
-            if(cpu_->V[x] - cpu_->V[y] < 0) {
+            if(cpu_->V[x] < cpu_->V[y]) {
                 cpu_->V[0xF] = 0u;
             } else {
                 cpu_->V[0xF] = 1u;
@@ -301,8 +297,8 @@ void Emulation::opcode8X() {
         case 0xE:
         {
             // 0x8xyE: set vX to vY and shift vX one bit to the left, set vF to the bit shifted out, even if X=F!
-            cpu_->V[0xF] = (cpu_->V[x] >> 7) & 0x1;
-            cpu_->V[x] = cpu_->V[x] << 1;
+            cpu_->V[0xF] = cpu_->V[x] >> 7;
+            cpu_->V[x] <<= 1;
             break;
         }
         default:
@@ -378,15 +374,33 @@ void Emulation::opcodeEX() {
         case 0x9E:
         {
             // Skips the next instruction if the key stored in VX(only consider the lowest nibble) is pressed
-            std::print("Key press event is not implemented...\n");
+            auto keycode = cpu_->V[x] & 0x00FF;
+            if(keycode > 16u) {
+                std::print("Unknown keycode: {}\n", keycode);
+                cpu_->pc_ += 2u;
+                break;
+            }
+            if(input_.isPressed(static_cast<Input::Key>(keycode))) {
+                cpu_->pc_ += 4u;
+                break;
+            }
             cpu_->pc_ += 2u;
             break;
         }
         case 0xA1:
         {
             // Skip next opcode if key in the lower 4 bits of vX is not pressed
-            std::print("Key press event is not implemented...\n");
-            cpu_->pc_ += 4u;
+            auto keycode = cpu_->V[x] & 0x00FF;
+            if(keycode > 16u) {
+                std::print("Unknown keycode: {}\n", keycode);
+                cpu_->pc_ += 2u;
+                break;
+            }
+            if(!input_.isPressed(static_cast<Input::Key>(keycode))) {
+                cpu_->pc_ += 4u;
+                break;
+            }
+            cpu_->pc_ += 2u;
             break;
         }
         default:
@@ -409,7 +423,14 @@ void Emulation::opcodeFX() {
         case 0x0A:
         {
             // wait for a key pressed and released and set vX to it, in megachip mode it also updates the screen like clear
-            std::print("Key press event is not implemented...\n");
+            if(!input_.isPressed()) {
+                return;
+            }
+            for(auto i = 0; i < 16; ++i) {
+                if(input_.isPressed(static_cast<Input::Key>(i))) {
+                    cpu_->V[x] = i;
+                }
+            }
             break;
         }
         case 0x15:
@@ -427,37 +448,44 @@ void Emulation::opcodeFX() {
         case 0x1E:
         {
             // add Vx to I
+            if(cpu_->I + cpu_->V[x] > 0xFFF) {
+                cpu_->V[0xF] = 1;
+            } else {
+                cpu_->V[0xF] = 0;
+            }
             cpu_->I += cpu_->V[x];
             break;
         }
         case 0x29:
         {
             // set I to the 5 line high hex sprite for the lowest nibble in vX
-            cpu_->I = cpu_->V[x] * 5;
+            cpu_->I = cpu_->V[x] * 0x5;
             break;
         }
         case 0x33:
         {
             // write the value of vX as BCD value at the addresses I, I+1 and I+2
-            cpu_->memory_[cpu_->I] = (cpu_->V[x] % 1000) / 100;
-            cpu_->memory_[cpu_->I + 1] = static_cast<uint8_t>((cpu_->V[x] % 100) / 10);
+            cpu_->memory_[cpu_->I] = cpu_->V[x] / 100;
+            cpu_->memory_[cpu_->I + 1] = static_cast<uint8_t>((cpu_->V[x] / 10) % 10);
             cpu_->memory_[cpu_->I + 2] = static_cast<uint8_t>(cpu_->V[x] % 10);
             break;
         }
         case 0x55:
         {
             // write the content of v0 to vX at the memory pointed to by I, I is incremented by X+1
-            for(auto i = 0; i < 15; ++i) {
+            for(auto i = 0; i < x; ++i) {
                 cpu_->memory_[cpu_->I + i] = cpu_->V[i];
             }
+            cpu_->I += x + 1;
             break;
         }
         case 0x65:
         {
             // read the bytes from memory pointed to by I into the registers v0 to vX, I is incremented by X+1
-            for(auto i = 0; i < 15; ++i) {
+            for(auto i = 0; i < x; ++i) {
                 cpu_->V[i] = cpu_->memory_[cpu_->I + i];
             }
+            cpu_->I += x + 1;
             break;
         }
         default:
