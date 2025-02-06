@@ -6,5 +6,5 @@ This is a playground for emulation studying. Currently the plan is to implement 
 - ~~Implement all the opcodes and font display~~
 - Implement the input
 - Run clang-checks
-- Rewrite rendering, so it will be based on rectangles and scaled to a screen properly
+- ~~Rewrite rendering, so it will be based on rectangles and scaled to a screen properly~~
 - Re-evaulate architecture
