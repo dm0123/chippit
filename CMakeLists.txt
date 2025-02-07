@@ -20,7 +20,6 @@ FetchContent_Declare(cmdlime
 FetchContent_MakeAvailable(cmdlime)
 
 add_executable(chippit src/main.cpp src/application.cpp src/emulation.cpp)
-target_include_directories(chippit PRIVATE ${CMAKE_SOURCE_DIR}/3rdparty/cmdlime/include)
 target_sources(chippit PUBLIC FILE_SET CXX_MODULES
     FILES
         src/core.cppm
