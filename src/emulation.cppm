@@ -23,7 +23,7 @@ import rom;
 namespace chippit {
 /// @brief Main emulation class
 export class Emulation {
-    static constexpr auto frequency = std::chrono::milliseconds{8};
+    static constexpr auto frequency = std::chrono::milliseconds{16};
 public:
     Emulation(bool cpuDump, bool memoryDump, bool graphicsDump);
 
